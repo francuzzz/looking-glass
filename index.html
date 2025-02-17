@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Looking Glass</title>
+  <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css" rel="stylesheet">
+  <script src="https://code.jquery.com/jquery-3.5.1.min.js"></script>
+  <style>
+    body {
+      background-color: #f8f9fa;
+      color: #212529;
+    }
+    pre {
+      background-color: #333;
+      color: #fff;
+      padding: 10px;
+      border-radius: 5px;
+      font-family: 'Courier New', Courier, monospace;
+      overflow: auto;
+    }
+    #result-container {
+      display: none;
+    }
+    .btn-primary {
+      background-color: #f44336;
+      border-color: #f44336;
+    }
+    .btn-primary:hover {
+      background-color: #d32f2f;
+      border-color: #d32f2f;
+    }
+    .form-control {
+      border: 1px solid #585858;
+    }
+    .form-control:focus {
+      border-color: #585858;
+      box-shadow: 0 0 0 0.2rem rgba(218, 218, 218, 0.25);
+    }
+    .alert-info {
+      background-color: #ffebee;
+      color: #f44336;
+      border-color: #f44336;
+    }
+    .loading {
+      display: none;
+      font-size: 1.2em;
+      color: #585858;
+      text-align: center;
+      margin-top: 20px;
+    }
+  </style>
+</head>
+<body>
+  <div class="container mt-5">
+    <h3 class="text-center">Server location:  </h3>
+    <div class="row mt-4">
+      <div class="col-md-8 offset-md-2">
+        <div id="browser-ping" class="alert alert-info text-center">Browser Ping: -- ms</div>
+        <form id="looking-glass-form">
+          <div class="form-group">
+            <label for="command">Command</label>
+            <select class="form-control" id="command" name="command">
+              <option value="ping">Ping</option>
+              <option value="traceroute">Traceroute</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="target">Target</label>
+            <input type="text" class="form-control" id="target" name="target" placeholder="Enter IP or domain">
+          </div>
+          <button type="submit" class="btn btn-primary">Execute</button>
+        </form>
+        <div class="loading" id="loading">Loading...</div>
+        <div id="result-container" class="mt-4">
+          <h3>Result</h3>
+          <pre id="result"></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    $(document).ready(function() {
+      // Function to measure browser ping to the server
+      function measureBrowserPing(callback) {
+        const start = Date.now();
+        fetch(window.location.href, { method: 'HEAD', cache: 'no-cache' })
+          .then(response => {
+            const end = Date.now();
+            const ping = end - start;
+            callback(ping);
+          })
+          .catch(() => {
+            callback('Error');
+          });
+      }
+
+      // Display browser ping
+      function updateBrowserPing() {
+        measureBrowserPing(function(ping) {
+          if (ping === 'Error') {
+            $('#browser-ping').text('Browser Ping: Error').show();
+          } else {
+            $('#browser-ping').text('Browser Ping: ' + ping + ' ms').show();
+          }
+        });
+      }
+
+      // Initialize browser ping when page loads
+      updateBrowserPing();
+
+      // Update browser ping when input changes
+      $('#target').on('input', function() {
+        $('#browser-ping').text('Browser Ping: -- ms').show();
+        clearTimeout(window.pingTimeout);
+        window.pingTimeout = setTimeout(updateBrowserPing, 500);
+      });
+
+      $('#looking-glass-form').on('submit', function(e) {
+        e.preventDefault();
+        $('#loading').show(); // Show loading indicator
+        $('#result-container').hide(); // Hide result container initially
+        $.ajax({
+          url: '/execute',
+          type: 'POST',
+          data: $(this).serialize(),
+          success: function(data) {
+            $('#loading').hide(); // Hide loading indicator
+            $('#result').text(data);
+            $('#result-container').show(); // Show result container after receiving data
+          },
+          error: function() {
+            $('#loading').hide(); // Hide loading indicator
+            $('#result').text('An error occurred.');
+            $('#result-container').show(); // Show result container even if there's an error
+          }
+        });
+      });
+    });
+  </script>
+</body>
+</html>
+
